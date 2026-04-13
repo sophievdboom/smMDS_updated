@@ -24,12 +24,7 @@ Thumbs.db
 *.tif
 *.tiff
 
-# Generated figures
-*.png
-
-# But keep important ones in a specific folder
-!figures/
-
 # Output / results folders (optional)
 results/
 output/
+out/
