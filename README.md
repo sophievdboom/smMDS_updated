@@ -1,3 +1,5 @@
+Test: Hi Henri
+
 Hi welcome to the updated version of the smMDS script by Krainer et al. 2023 BioRxiv (doi: https://doi.org/10.1101/2023.07.12.548675). I updated the code to python version 3.12 and added tttrlib for enabling reading of all ptu file types for smMDS confocal measurements. For running the code, create an environment and pip install: "pip install -r requirements.txt" while in the folder of the code (use cd in terminal).
 
 # Notes of old smMDS repository

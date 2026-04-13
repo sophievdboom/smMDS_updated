@@ -134,6 +134,15 @@ metadata.add_info(
     explanation="order of the region of interest [px]")
 
 metadata.add_info(
+    "KEY_MD_MIRROR",
+    "Mirror data",
+    bool,
+    required=False,
+    default=False,
+    explanation="Mirror the scan/image data before analysis."
+)
+
+metadata.add_info(
     "KEY_MD_DATE", "Date [YYYYMMDD]", str,
     required=False,
     example="20100231")

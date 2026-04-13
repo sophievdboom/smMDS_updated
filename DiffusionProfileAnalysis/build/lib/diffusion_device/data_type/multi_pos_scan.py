@@ -59,6 +59,9 @@ class MultiPosScan(DataType):
             filename = self.metadata["KEY_MD_FN"]
         data = load_file(filename, **self.metadata["KEY_MD_SCAN_STRUCT"])
 
+        if self.metadata.get("__mirror_data__", False):
+            data = data[::-1]
+
         # Apply scan slice
         scan_slice = self.settings["KEY_SET_SCAN_SLICE"]
         if scan_slice is not None:
@@ -459,7 +462,7 @@ class MultiPosScan(DataType):
         arg_extrema = arg_extrema[arg_extrema != len(y)]
         if mask_expected is not None:
             # Search in the expected positions first
-            filter_mask = np.in1d(
+            filter_mask = np.isin(
                 arg_extrema, np.ravel(np.argwhere(mask_expected)))
             if np.any(filter_mask):
                 arg_extrema = arg_extrema[filter_mask]

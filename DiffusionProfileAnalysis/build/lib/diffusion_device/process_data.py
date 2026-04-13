@@ -67,6 +67,9 @@ def full_fit(settingsfn, metadatafn, outpath=None):
     metadata = keys.metadata.load_json(metadatafn)
     settings = keys.settings.load_json(settingsfn)
 
+    # Optional global flag for later handling in data-type modules
+    metadata["__mirror_data__"] = bool(metadata.get("KEY_MD_MIRROR", False))
+
     # Get type
     data_type = metadata["KEY_MD_TYPE"]
     mod = get_module(data_type, metadata, settings, outpath)
