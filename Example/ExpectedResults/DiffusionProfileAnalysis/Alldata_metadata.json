@@ -1,0 +1,49 @@
+{
+    "Type of data": "multi_pos_scan",
+    "Scan file structure": {
+        "delimiter": ",",
+        "skiprows": 0,
+        "index": [
+            [
+                0,
+                400
+            ],
+            [
+                1,
+                2
+            ]
+        ],
+        "transpose": false
+    },
+    "Image file name": "Alldata.txt",
+    "Subtract optics background": false,
+    "Image exposition time [s]": 1,
+    "Background image exposition time [s]": 1,
+    "Wz[m]": 27e-6,
+    "Wy[m]": 225e-6,
+    "Wall Width [m]": 50e-6,
+    "Number of channels in a file": 4,
+    "Q[ulph]": 100,
+    "Read Positions [m]": [
+        1e-3,
+        16e-3,
+        40e-3,
+        80e-3
+    ],
+    "Pixel Size [m]": 3.516e-6,
+    "Date [YYYYMMDD]": "20201115",
+    "Analyte informations": "20pM HSA",
+    "Buffer informations": "1xPBS pH7",
+    "Device informations": "Kadi100x50 model 1",
+    "Flow direction (u, d, l, r)": [
+        "d",
+        "u",
+        "d",
+        "u"
+    ],
+    "Operator": "Rapha\u00ebl",
+    "Success [1-3]": 3,
+    "Temperature [K]": 295,
+    "Viscosity [Pa s]": 1e-3,
+    "Bright wall?": false
+}

@@ -1,0 +1,35 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.env
+venv/
+.venv/
+
+# Jupyter notebooks checkpoints (if you ever use them)
+.ipynb_checkpoints/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+
+# Large data files (IMPORTANT for your project)
+*.h5
+*.ptu
+*.npy
+*.mat
+*.csv
+*.tif
+*.tiff
+
+# Generated figures
+*.png
+
+# But keep important ones in a specific folder
+!figures/
+
+# Output / results folders (optional)
+results/
+output/

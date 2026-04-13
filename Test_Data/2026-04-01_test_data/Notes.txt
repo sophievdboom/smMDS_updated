@@ -1,0 +1,1 @@
+So here I did some quick scans of a sit scan, a contineous scan and a step scan for T2 and T3 ptu files. I measured Atto488 at 10pM. For the contineous and step scan I went from inside the chamber to outsite within 4mm, so one can see the difference in intensity as you would when going in or out a channel, only the dimensions of the wall are way bigger.

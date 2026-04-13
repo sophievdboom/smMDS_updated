@@ -1,0 +1,43 @@
+==============================================================================
+ Usage
+==============================================================================
+    The sample folder contains scripts to create metadata and fit settings. 
+To fit a file, call process_data.full_fit with the path to these files and 
+an output folder.
+The json files can also be written and modified by hand. 
+Check keys.py for details.
+
+If you let the script do the background subtraction, it might get more infos from the files.
+
+Please clip away any part you don't want to analyse.
+
+==============================================================================
+ Code Organisation
+==============================================================================
+
+basis_generate.py
+    Code to create basis profile
+    
+display_data.py 
+    Code to display the data
+    
+input_files.py
+    Code to create and load json files containing the settings and metadata
+    
+keys.py
+    List ok keys used by input_files.py.
+    
+process_data.py
+    Code to process the data.
+
+data_type
+    code specific to a data_type. Called by process_data.
+    The modules define the following functions:
+    data, state = load_data(metadata)
+    data, pixel_size, *infos = process_data(data, metadata, settings)
+    profiles = get_profiles(metadata, settings, data, pixel_size, *infos)
+    radius, fits = size_profiles(profiles, pixel_size, metadata, settings)
+    plot_and_save(radius, profiles, fits, pixel_size, data, outpath, settings)
+    
+profile.py
+    Code to work on and fit profiles.

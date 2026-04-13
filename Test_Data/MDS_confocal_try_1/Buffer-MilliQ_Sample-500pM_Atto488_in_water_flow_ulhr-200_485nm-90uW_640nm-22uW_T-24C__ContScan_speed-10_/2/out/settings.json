@@ -1,0 +1,24 @@
+{
+    "Radii[m] (min, max, number)": [
+        1e-12,
+        100e-9,
+        1e3
+    ],
+    "Radii in log": true,
+    "Number of species to fit": 1,
+    "Ignore Edge[m]": 0.0,
+    "Number of z slices": 11,
+    "First Position Filter": "none",
+    "Flatten bright field": true,
+    "Ignore Error": true,
+    "Stack is stationnary": false,
+    "Background had good features": true,
+    "Remove bad fits": false,
+    "Vary offset?": false,
+    "Rebin Profiles": 1,
+    "Use Image Coordinates": true,
+    "Rebin stack": 1,
+    "Plot Square Error": true,
+    "Fit square of signal": false,
+    "Align background": true
+}

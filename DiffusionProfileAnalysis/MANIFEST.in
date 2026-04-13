@@ -1,0 +1,2 @@
+include README.md
+include diffusion_device/tests/test_data/*
