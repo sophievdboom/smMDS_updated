@@ -1,15 +1,33 @@
+from pathlib import Path
+import tkinter as tk
+from tkinter import filedialog
+
 from diffusion_device.keys import settings
 
+# Running the script will allow you to choose the folder containing the data
 
-# path to where to save settings.json
-datapath = './Test_Data/2026-04-10_GOOD_Atto488_T2_smMDS/conc-1nM_laser-485nm_640nm_Mode-T2_ch-2_T-23_buffer-1xsb_fr-100mlph_power-con100_chipname-master3.3_fabdate-200226_h-28.1__StepScan_stepnumber-200_time-2s/3/out/settings.json'
+def choose_data_folder():
+    root = tk.Tk()
+    root.withdraw()
+    folder = filedialog.askdirectory(title="Select folder for settings.json")
+    root.update()
+    root.destroy()
+    return folder
+
+
+selected_folder = choose_data_folder()
+if not selected_folder:
+    raise RuntimeError("No folder selected.")
+
+selected_folder = Path(selected_folder)
+out_folder = selected_folder / "out"
+out_folder.mkdir(parents=True, exist_ok=True)
+
+datapath = str(out_folder / 'settings.json')
 json_infos = {}
 
 # Radii[m] (min, max, number)
-json_infos['Radii[m] (min, max, number)'] = [
-                                            10e-13,
-                                            10e-8,
-                                            1000]
+json_infos['Radii[m] (min, max, number)'] = [10e-13, 10e-8, 1000]
 
 # Radii in log
 json_infos['Radii in log'] = True
@@ -40,9 +58,7 @@ json_infos['Flatten bright field'] = True
 json_infos['Stack images to plot'] = None
 
 # Frames range
-json_infos['Frames range'] = [
-    None,
-    None]
+json_infos['Frames range'] = [None, None]
 
 # Ignore Error
 json_infos['Ignore Error'] = True
@@ -66,9 +82,7 @@ json_infos['dx factor'] = None
 json_infos['Vary offset?'] = False
 
 # For a single scan, the slice to consider
-json_infos['Scan Slice'] = [
-    None,
-    None]
+json_infos['Scan Slice'] = [None, None]
 
 # If too many profiles, rebin
 json_infos['Rebin Profiles'] = 1
@@ -89,3 +103,4 @@ json_infos['Fit square of signal'] = False
 json_infos['Align background'] = True
 
 settings.generate_json(datapath, json_infos)
+print(f"Settings generated at: {datapath}")
