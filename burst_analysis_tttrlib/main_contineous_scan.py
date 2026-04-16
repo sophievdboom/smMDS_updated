@@ -366,8 +366,8 @@ if __name__ == "__main__":
         "pie_microtime_gate": None,
         "diff_chunk_size": 5_000_000,
         "debug_photons_n": 0,
-        "channel_output_mode": "sum",   # 'sum', 'ch1', 'ch2', or 'separate'
-        "burst_channel_mode": "sum",
+        "channel_output_mode": "ch1",   # 'sum', 'ch1', 'ch2', or 'separate'
+        "burst_channel_mode": "ch1",
     }
 
     main_continuous_scan(ptufilename, user_setting)

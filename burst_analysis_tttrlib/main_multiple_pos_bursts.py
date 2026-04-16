@@ -1,5 +1,11 @@
+'''
+This is the main script to perform a burst search for step scan data.
+At the end of the script you can alter the burst searh settings.
+Run the script and a pop up will appear, allowing you to select a ptu file. All ptu files with x.xxum_steps in the name will be analysed.
+
+'''
+
 import os
-import re
 import glob
 import copy
 import tkinter as tk
@@ -7,14 +13,17 @@ from tkinter import filedialog
 
 from get_bursts_tttrlib import get_bursts
 
-
-CHANNEL_MODE_CONFIGS = {
-    "sum": [("", "sum")],
-    "ch1": [("_ch1", "ch1")],
-    "ch2": [("_ch2", "ch2")],
-    "separate": [("_ch1", "ch1"), ("_ch2", "ch2")],
-}
-
+from burst_analysis_utils import (
+    extract_position_um,
+    build_user_setting,
+    save_inputparameter_txt,
+    save_positions_txt,
+    save_numb_molecules_txt,
+    save_sumphoton_txt,
+    save_alldata_txt,
+    initialise_results_dict,
+    build_mode_results
+)
 
 def get_ptufilename():
     root = tk.Tk()
@@ -25,100 +34,6 @@ def get_ptufilename():
     root.update()
     root.destroy()
     return filename
-
-
-def extract_position_um(filename):
-    match = re.search(r'([0-9]{1,6}(?:\.[0-9]{0,2})?)um_', filename)
-    if match is None:
-        raise ValueError(f"Could not extract position from filename: {filename}")
-    return float(match.group(1))
-
-
-def save_inputparameter_txt(output_folder, user_setting, suffix=""):
-    filepath = os.path.join(output_folder, f"Analysed_data_inputparameter{suffix}.txt")
-    with open(filepath, "w") as f:
-        f.write(f"{user_setting['set_lee_filter']}\n")
-        f.write(f"{user_setting['threshold_iT_signal']}\n")
-        f.write(f"{user_setting['threshold_iT_noise']}\n")
-        f.write(f"{user_setting['min_phs_burst']}\n")
-        f.write(f"{user_setting['min_phs_noise']}\n")
-        f.write(f"{user_setting['filter_name']}\n")
-        f.write(f"{user_setting['show_plot']}\n")
-        f.write(f"{user_setting['output_folder']}\n")
-        f.write(f"{user_setting['burst_channel_mode']}\n")
-
-
-
-def save_positions_txt(output_folder, positions, suffix=""):
-    filepath = os.path.join(output_folder, f"Analysed_data_positions{suffix}.txt")
-    with open(filepath, "w") as f:
-        for value in positions:
-            f.write(f"{value:.18e}\n")
-
-
-
-def save_numb_molecules_txt(output_folder, numb_molecules, suffix=""):
-    filepath = os.path.join(output_folder, f"Analysed_data_numb_molecules{suffix}.txt")
-    with open(filepath, "w") as f:
-        for value in numb_molecules:
-            f.write(f"{value:.18e}\n")
-
-
-
-def save_sumphoton_txt(output_folder, sum_photons, suffix=""):
-    filepath = os.path.join(output_folder, f"Analysed_data_SumPhoton{suffix}.txt")
-    with open(filepath, "w") as f:
-        for value in sum_photons:
-            f.write(f"{value:.18e}\n")
-
-
-
-def save_alldata_txt(output_folder, alldata_rows, suffix=""):
-    filepath = os.path.join(output_folder, f"Alldata{suffix}.txt")
-    with open(filepath, "w") as f:
-        for row in alldata_rows:
-            row_str = ",".join(f"{v:.18e}" for v in row)
-            f.write(row_str + "\n")
-
-
-
-def build_user_setting(base_user_setting, output_folder):
-    user_setting = copy.deepcopy(base_user_setting)
-    user_setting["output_folder"] = output_folder
-    return user_setting
-
-
-
-def initialise_results_dict():
-    return {
-        suffix: {
-            "positions": [],
-            "numb_molecules": [],
-            "sum_photons": [],
-            "alldata_rows": [],
-            "mode": mode,
-        }
-        for suffix, mode in CHANNEL_MODE_CONFIGS["sum"]
-    }
-
-
-
-def build_mode_results(channel_output_mode):
-    if channel_output_mode not in CHANNEL_MODE_CONFIGS:
-        raise ValueError(
-            "channel_output_mode must be one of: 'sum', 'ch1', 'ch2', 'separate'."
-        )
-    return {
-        suffix: {
-            "positions": [],
-            "numb_molecules": [],
-            "sum_photons": [],
-            "alldata_rows": [],
-            "mode": mode,
-        }
-        for suffix, mode in CHANNEL_MODE_CONFIGS[channel_output_mode]
-    }
-
 
 
 def analyse_folder(selected_file, base_user_setting):
@@ -175,7 +90,16 @@ def analyse_folder(selected_file, base_user_setting):
             result["sum_photons"].append(total_photons_in_file)
 
             base_name = os.path.splitext(os.path.basename(ptufilename))[0]
-            bursts_csv = os.path.join(output_folder, f"{base_name}_bursts_tttrlib{suffix}.csv")
+            bursts_folder = os.path.join(output_folder, "bursts_csv")
+            os.makedirs(bursts_folder, exist_ok=True)
+
+            # define file path inside that folder
+            bursts_csv = os.path.join(
+                bursts_folder,
+                f"{base_name}_bursts_tttrlib{suffix}.csv"
+            )
+
+            # save file
             df_bursts.to_csv(bursts_csv, index=False)
 
     for suffix, result in mode_results.items():
@@ -202,21 +126,23 @@ def analyse_folder(selected_file, base_user_setting):
 if __name__ == "__main__":
     base_user_setting = {
         "set_lee_filter": 2,
-        "threshold_iT_signal": 0.05,
+        "threshold_iT_signal": 0.05, # interphoton time threshold in ms
+        "threshold_iT_lower":  0.4e-6, # lower threshold
         "threshold_iT_noise": 0.1,
         "min_phs_burst": 10,
         "min_phs_noise": 160,
         "filter_name": "addLeefilter",
-        "show_plot": False,
+        "show_plot": True, # saves the interphoton time plots for filter optimalisation, does take a long time
         "output_folder": "out",
-        "use_noise_regions": False,
+        "use_noise_regions": False, # does nothing yet when
         "tttr_mode": "T2",
         "allowed_routing_channels": None,
         "pie_microtime_gate": None,
         "diff_chunk_size": 5_000_000,
-        "debug_photons_n": 0,
+        "debug_photons_n": 0, # creates csv files for debugging, set to 0 if no csv files should be saved
         "channel_output_mode": "ch1",   # 'sum', 'ch1', 'ch2', or 'separate'
         "burst_channel_mode": "ch1",
+        "plot_max_points": 200000
     }
 
     selected_file = get_ptufilename()

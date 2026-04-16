@@ -99,7 +99,7 @@ json_infos['Background image exposition time [s]'] = 1
 json_infos['Optics background image exposition time [s]'] = None
 
 # Height of the channel [m]
-json_infos['Wz[m]'] = 27e-6
+json_infos['Wz[m]'] = 28.3e-6
 
 # Width of the channel [m]
 json_infos['Wy[m]'] = 225e-6
@@ -111,7 +111,7 @@ json_infos['Wall Width [m]'] = 50e-6
 json_infos['Number of channels in a file'] = 4
 
 # Flow [ulph].
-json_infos['Q[ulph]'] = 100
+json_infos['Q[ulph]'] = 195
 
 # Reading position at the middle of the image [m]
 json_infos['Read Positions [m]'] = [
@@ -122,7 +122,7 @@ json_infos['Read Positions [m]'] = [
 ]
 
 # Pixel Size [m]
-json_infos['Pixel Size [m]'] = 6.7e-6
+json_infos['Pixel Size [m]'] = 6.67e-6
 
 # order of the region of interest [px]
 json_infos['Image border[px] (t, d, l, r)'] = [
@@ -142,10 +142,10 @@ json_infos['Date [YYYYMMDD]'] = datetime.today().strftime('%Y%m%d')
 json_infos['Analyte informations'] = '1nM Atto488'
 
 # Buffer informations
-json_infos['Buffer informations'] = '1xPBS pH7'
+json_infos['Buffer informations'] = 'Sample Buffer 0.05% Tween80'
 
 # Device informations
-json_infos['Device informations'] = 'Kadi100x50 model 1'
+json_infos['Device informations'] = 'smMDS (Therese 6.0) Master003.5'
 
 # profile position. None means the mean over Z is used.
 json_infos['Z position of scans [m]'] = None
@@ -160,13 +160,13 @@ json_infos['Flow direction (u, d, l, r)'] = [
 ]
 
 # Operator
-json_infos['Operator'] = 'Raphaël'
+json_infos['Operator'] = 'SvdB HeLi'
 
 # Success [1-3]
 json_infos['Success [1-3]'] = 3
 
 # Temperature [K]
-json_infos['Temperature [K]'] = 295
+json_infos['Temperature [K]'] = 273.15+24
 
 # Viscosity [Pa s]
 json_infos['Viscosity [Pa s]'] = 1e-3

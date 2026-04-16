@@ -2,6 +2,10 @@ import json
 import numpy as np
 import pandas as pd
 import tttrlib
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+import os
+import re
 
 from scipy.ndimage import uniform_filter
 
@@ -224,6 +228,7 @@ def _chunked_boolean_runs(
     resolution_s,
     setLeeFilter,
     filter_name,
+    signal_lower_ms,
     signal_upper_ms,
     noise_lower_ms,
     use_noise_regions,
@@ -234,7 +239,7 @@ def _chunked_boolean_runs(
     n_diff = n_events - 1
 
     tick_s = resolution_s
-    lower_bound_ticks = 0.4e-9 / tick_s
+    lower_bound_ticks = signal_lower_ms * 1e-3 / tick_s
     signal_upper_ticks = signal_upper_ms * 1e-3 / tick_s
     noise_lower_ticks = noise_lower_ms * 1e-3 / tick_s
 
@@ -286,6 +291,7 @@ def get_bursts(ptufilename, user_setting=None):
     default_setting = {
         "set_lee_filter": 2,
         "threshold_iT_signal": 0.05,
+        "threshold_iT_lower": 0.4e-6,
         "threshold_iT_noise": 0.1,
         "min_phs_burst": 10,
         "min_phs_noise": 160,
@@ -299,6 +305,7 @@ def get_bursts(ptufilename, user_setting=None):
         "pie_microtime_gate": None,
         "diff_chunk_size": 5_000_000,
         "debug_photons_n": 0,
+        "plot_max_points": 200000,
     }
 
     if user_setting is None:
@@ -310,6 +317,7 @@ def get_bursts(ptufilename, user_setting=None):
 
     setLeeFilter = user_setting["set_lee_filter"]
     threIT = user_setting["threshold_iT_signal"]
+    threITLower = user_setting['threshold_iT_lower']
     threIT2 = user_setting["threshold_iT_noise"]
     minPhs = user_setting["min_phs_burst"]
     minPhsN = user_setting["min_phs_noise"]
@@ -317,10 +325,18 @@ def get_bursts(ptufilename, user_setting=None):
     use_noise_regions = user_setting["use_noise_regions"]
     diff_chunk_size = int(user_setting["diff_chunk_size"])
     debug_photons_n = int(user_setting["debug_photons_n"])
+    show_plot = bool(user_setting["show_plot"])
+    plot_max_points = int(user_setting["plot_max_points"])
 
     tttr = tttrlib.TTTR(ptufilename)
     channels, macro_times_raw = _select_events(tttr, user_setting)
     resolution_s = get_macro_resolution_s(tttr)
+
+    # To check resolution
+    #print(f"resolution_s = {resolution_s:.12e} s")
+    #print(f"first 10 macro_times_raw = {macro_times_raw[:10]}")
+    #print(f"first 10 diffs raw ticks = {np.diff(macro_times_raw[:11])}")
+    #print(f"first 10 diffs in ms = {np.diff(macro_times_raw[:11]) * resolution_s * 1e3}")
 
     if len(macro_times_raw) == 0:
         df1 = pd.DataFrame(columns=["channel", "photons"])
@@ -351,12 +367,37 @@ def get_bursts(ptufilename, user_setting=None):
         resolution_s=resolution_s,
         setLeeFilter=setLeeFilter,
         filter_name=filter_name,
+        signal_lower_ms=threITLower,
         signal_upper_ms=threIT,
         noise_lower_ms=threIT2,
         use_noise_regions=use_noise_regions,
         chunk_size=diff_chunk_size,
         overall_variance=overall_variance,
     )
+
+    if show_plot:
+        output_folder = os.path.join(user_setting["output_folder"], "inter_photon_times")
+        os.makedirs(output_folder, exist_ok=True)
+
+        base_name = os.path.splitext(os.path.basename(ptufilename))[0]
+        plot_path = os.path.join(
+            output_folder,
+            f"{base_name}_interphoton_plot.png"
+        )
+
+        _plot_interphoton_diagnostics(
+            macro_times_raw=macro_times_raw,
+            resolution_s=resolution_s,
+            setLeeFilter=setLeeFilter,
+            filter_name=filter_name,
+            threshold_iT_lower=threITLower,
+            threshold_iT_signal=threIT,
+            bLength=bLength,
+            min_phs_burst=minPhs,
+            ptufilename=ptufilename,
+            save_path=plot_path,
+            max_points=plot_max_points,
+        )
 
     bStartLong = bStart[bLength >= minPhs]
     bLengthLong = np.asarray(bLength[bLength >= minPhs], dtype=np.int64)
@@ -419,3 +460,189 @@ def get_bursts(ptufilename, user_setting=None):
     df1.attrs["background_intensity"] = BI
 
     return df1, df2
+
+def _plot_interphoton_diagnostics(
+    macro_times_raw,
+    resolution_s,
+    setLeeFilter,
+    filter_name,
+    threshold_iT_lower,
+    threshold_iT_signal,
+    bLength,
+    min_phs_burst,
+    ptufilename,
+    save_path,
+    max_points=200000,
+):
+
+    n_events = len(macro_times_raw)
+    if n_events < 2:
+        print("Not enough photons to plot.")
+        return
+
+    interPhT_ticks = np.diff(macro_times_raw).astype(np.float64)
+
+    if filter_name == "addLeefilter":
+        overall_variance = np.var(interPhT_ticks, dtype=np.float64)
+        interLee_ticks = _lee_filter_add_with_global_variance(
+            interPhT_ticks, setLeeFilter, overall_variance
+        )
+    elif filter_name == "matlabLeefilter":
+        interLee_ticks = leeFilter1D_matlab(interPhT_ticks, setLeeFilter)
+    else:
+        raise RuntimeError("filter name does not exist")
+
+    interPhT_ms = interPhT_ticks * resolution_s * 1e3
+    interLee_ms = interLee_ticks * resolution_s * 1e3
+    lower_threshold_ms = threshold_iT_lower
+    upper_threshold_ms = threshold_iT_signal
+
+    include_mask = (interLee_ms > lower_threshold_ms) & (interLee_ms < upper_threshold_ms)
+    exclude_mask = ~include_mask
+
+    kept_burst_mask = bLength >= min_phs_burst
+    rejected_burst_mask = ~kept_burst_mask
+
+    n = len(interPhT_ms)
+    step = max(1, n // max_points)
+
+    idx = np.arange(n)[::step]
+    raw_plot = interPhT_ms[::step]
+    filt_plot = interLee_ms[::step]
+    incl_plot_mask = include_mask[::step]
+    excl_plot_mask = exclude_mask[::step]
+
+    valid = interLee_ms[interLee_ms > 0]
+    if len(valid) == 0:
+        print("No positive filtered inter-photon times to plot.")
+        return
+
+    bins_it = np.logspace(np.log10(valid.min()), np.log10(valid.max()), 200)
+
+    positive_bLength = bLength[bLength > 0]
+    if len(positive_bLength) > 0:
+        if np.max(positive_bLength) > 1:
+            bins_len = np.logspace(np.log10(1), np.log10(np.max(positive_bLength)), 60)
+        else:
+            bins_len = np.array([0.5, 1.5])
+    else:
+        bins_len = np.array([0.5, 1.5])
+
+    step_match = re.search(r'([0-9]{1,6}(?:\.[0-9]{0,2})?)um_', os.path.basename(ptufilename))
+    if step_match is not None:
+        step_text = f"step {step_match.group(1)} µm"
+    else:
+        step_text = os.path.splitext(os.path.basename(ptufilename))[0]
+
+    fig = plt.figure(figsize=(12, 9))
+    gs = GridSpec(2, 2, height_ratios=[2.2, 1.3], hspace=0.35, wspace=0.3)
+
+    ax_top = fig.add_subplot(gs[0, :])
+    ax_bottom_left = fig.add_subplot(gs[1, 0])
+    ax_bottom_right = fig.add_subplot(gs[1, 1])
+
+    # --- TOP: scatter ---
+    ax_top.plot(idx, raw_plot, ".", markersize=1, alpha=0.12, label="iT before Lee filter", color="darkgrey")
+    ax_top.plot(
+        idx[incl_plot_mask],
+        filt_plot[incl_plot_mask],
+        ".",
+        markersize=1.2,
+        alpha=0.55,
+        label="selected by iT threshold",
+        color="tab:green",
+    )
+    ax_top.plot(
+        idx[excl_plot_mask],
+        filt_plot[excl_plot_mask],
+        ".",
+        markersize=1.8,
+        alpha=0.75,
+        label="excluded by iT threshold",
+        color="tab:red",
+    )
+    ax_top.axhline(
+        lower_threshold_ms,
+        linestyle="--",
+        linewidth=2,
+        label="lower threshold",
+        color="tab:purple",
+    )
+    ax_top.axhline(
+        upper_threshold_ms,
+        linestyle="--",
+        linewidth=2,
+        label="upper threshold",
+        color="tab:blue",
+    )
+    ax_top.set_yscale("log")
+    ax_top.set_xlabel("Photon index")
+    ax_top.set_ylabel("Inter-photon time [ms]")
+    ax_top.set_title(f"Inter-photon times: {step_text}")
+    ax_top.legend()
+
+    # --- BOTTOM LEFT: iT histogram ---
+    ax_bottom_left.hist(
+        interLee_ms[exclude_mask & (interLee_ms > 0)],
+        bins=bins_it,
+        log=True,
+        alpha=0.6,
+        color="tab:red",
+        label="excluded",
+    )
+    ax_bottom_left.hist(
+        interLee_ms[include_mask & (interLee_ms > 0)],
+        bins=bins_it,
+        log=True,
+        alpha=0.6,
+        color="tab:green",
+        label="selected",
+    )
+    ax_bottom_left.axvline(
+        lower_threshold_ms,
+        linestyle="--",
+        linewidth=2,
+        color="tab:purple",
+        label="lower threshold",
+    )
+    ax_bottom_left.axvline(
+        upper_threshold_ms,
+        linestyle="--",
+        linewidth=2,
+        color="tab:blue",
+        label="upper threshold",
+    )
+    ax_bottom_left.set_xscale("log")
+    ax_bottom_left.set_xlabel("Filtered inter-photon time [ms]")
+    ax_bottom_left.set_ylabel("Count inter-photon time")
+    #ax_bottom_left.set_title("Inter-photon time [ms]")
+    ax_bottom_left.legend()
+
+    # --- BOTTOM RIGHT: burst length histogram ---
+    if len(positive_bLength) > 0:
+        ax_bottom_right.hist(
+            bLength[rejected_burst_mask],
+            bins=bins_len,
+            log=True,
+            alpha=0.6,
+            color="lightgreen",
+            label="excluded",
+        )
+        ax_bottom_right.hist(
+            bLength[kept_burst_mask],
+            bins=bins_len,
+            log=True,
+            alpha=0.6,
+            color="darkgreen",
+            label="selected",
+        )
+    ax_bottom_right.axvline(min_phs_burst, linestyle="--", linewidth=2, color="tab:blue", label="min_phs_burst")
+    ax_bottom_right.set_xscale("log")
+    ax_bottom_right.set_xlabel("Burst length [photons]")
+    ax_bottom_right.set_ylabel("Burst count")
+    #ax_bottom_right.set_title("Candidate burst length histogram")
+    ax_bottom_right.legend()
+
+    plt.subplots_adjust(hspace=0.35, wspace=0.3)
+    plt.savefig(save_path, dpi=300)
+    plt.close()
