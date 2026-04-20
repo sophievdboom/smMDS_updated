@@ -122,16 +122,16 @@ def analyse_selected_files(selected_files, base_user_setting):
 
 if __name__ == "__main__":
     base_user_setting = {
-        "set_lee_filter": 2,
-        "threshold_iT_signal": 25e-06, # interphoton time threshold in ms
-        "threshold_iT_lower": 0.1e-6,
+        "set_lee_filter": 4,
+        "threshold_iT_signal": 0.05, # interphoton time threshold in ms
+        "threshold_iT_lower": 0.4e-6,
         "threshold_iT_noise": 0.1,
-        "min_phs_burst": 10e3,
+        "min_phs_burst": 10,
         "min_phs_noise": 1600,
         "filter_name": "addLeefilter",
         "show_plot": True, # saves the interphoton time plots for filter optimalisation, does take a long time
         "output_folder": "out",
-        "use_noise_regions": False, # does nothing yet when
+        "use_noise_regions": False, # does nothing yet
         "tttr_mode": "T2",
         "allowed_routing_channels": None,
         "pie_microtime_gate": None,

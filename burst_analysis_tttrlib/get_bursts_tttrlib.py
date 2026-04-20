@@ -4,6 +4,7 @@ import pandas as pd
 import tttrlib
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from matplotlib.patches import Patch
 import os
 import re
 
@@ -317,7 +318,7 @@ def get_bursts(ptufilename, user_setting=None):
 
     setLeeFilter = user_setting["set_lee_filter"]
     threIT = user_setting["threshold_iT_signal"]
-    threITLower = user_setting['threshold_iT_lower']
+    threITLower = user_setting["threshold_iT_lower"]
     threIT2 = user_setting["threshold_iT_noise"]
     minPhs = user_setting["min_phs_burst"]
     minPhsN = user_setting["min_phs_noise"]
@@ -331,12 +332,6 @@ def get_bursts(ptufilename, user_setting=None):
     tttr = tttrlib.TTTR(ptufilename)
     channels, macro_times_raw = _select_events(tttr, user_setting)
     resolution_s = get_macro_resolution_s(tttr)
-
-    # To check resolution
-    #print(f"resolution_s = {resolution_s:.12e} s")
-    #print(f"first 10 macro_times_raw = {macro_times_raw[:10]}")
-    #print(f"first 10 diffs raw ticks = {np.diff(macro_times_raw[:11])}")
-    #print(f"first 10 diffs in ms = {np.diff(macro_times_raw[:11]) * resolution_s * 1e3}")
 
     if len(macro_times_raw) == 0:
         df1 = pd.DataFrame(columns=["channel", "photons"])
@@ -375,6 +370,9 @@ def get_bursts(ptufilename, user_setting=None):
         overall_variance=overall_variance,
     )
 
+    bStartLong = bStart[bLength >= minPhs]
+    bLengthLong = np.asarray(bLength[bLength >= minPhs], dtype=np.int64)
+
     if show_plot:
         output_folder = os.path.join(user_setting["output_folder"], "inter_photon_times")
         os.makedirs(output_folder, exist_ok=True)
@@ -394,13 +392,12 @@ def get_bursts(ptufilename, user_setting=None):
             threshold_iT_signal=threIT,
             bLength=bLength,
             min_phs_burst=minPhs,
+            bStartLong=bStartLong,
+            bLengthLong=bLengthLong,
             ptufilename=ptufilename,
             save_path=plot_path,
             max_points=plot_max_points,
         )
-
-    bStartLong = bStart[bLength >= minPhs]
-    bLengthLong = np.asarray(bLength[bLength >= minPhs], dtype=np.int64)
 
     if use_noise_regions:
         bStartLongN = np.asarray(bStartN[bLengthN >= minPhsN], dtype=np.int64)
@@ -470,6 +467,8 @@ def _plot_interphoton_diagnostics(
     threshold_iT_signal,
     bLength,
     min_phs_burst,
+    bStartLong,
+    bLengthLong,
     ptufilename,
     save_path,
     max_points=200000,
@@ -534,12 +533,22 @@ def _plot_interphoton_diagnostics(
     else:
         step_text = os.path.splitext(os.path.basename(ptufilename))[0]
 
-    fig = plt.figure(figsize=(12, 9))
-    gs = GridSpec(2, 2, height_ratios=[2.2, 1.3], hspace=0.35, wspace=0.3)
+    fig = plt.figure(figsize=(10, 7.5))
+    gs = GridSpec(2, 2, height_ratios=[2.0, 1.15], hspace=0.18, wspace=0.18)
 
     ax_top = fig.add_subplot(gs[0, :])
     ax_bottom_left = fig.add_subplot(gs[1, 0])
     ax_bottom_right = fig.add_subplot(gs[1, 1])
+
+    # --- TOP: highlight final selected bursts ---
+    for s, L in zip(bStartLong, bLengthLong):
+        ax_top.axvspan(
+            s,
+            s + L,
+            color="pink",
+            alpha=0.18,
+            linewidth=0,
+        )
 
     # --- TOP: scatter ---
     ax_top.plot(idx, raw_plot, ".", markersize=1, alpha=0.12, label="iT before Lee filter", color="darkgrey")
@@ -579,7 +588,12 @@ def _plot_interphoton_diagnostics(
     ax_top.set_xlabel("Photon index")
     ax_top.set_ylabel("Inter-photon time [ms]")
     ax_top.set_title(f"Inter-photon times: {step_text}")
-    ax_top.legend()
+
+    burst_patch = Patch(facecolor="pink", alpha=0.18, label="selected bursts")
+    handles, labels = ax_top.get_legend_handles_labels()
+    handles.append(burst_patch)
+    labels.append("selected bursts")
+    ax_top.legend(handles, labels, fontsize=9)
 
     # --- BOTTOM LEFT: iT histogram ---
     ax_bottom_left.hist(
@@ -615,8 +629,7 @@ def _plot_interphoton_diagnostics(
     ax_bottom_left.set_xscale("log")
     ax_bottom_left.set_xlabel("Filtered inter-photon time [ms]")
     ax_bottom_left.set_ylabel("Count inter-photon time")
-    #ax_bottom_left.set_title("Inter-photon time [ms]")
-    ax_bottom_left.legend()
+    ax_bottom_left.legend(fontsize=9)
 
     # --- BOTTOM RIGHT: burst length histogram ---
     if len(positive_bLength) > 0:
@@ -640,9 +653,15 @@ def _plot_interphoton_diagnostics(
     ax_bottom_right.set_xscale("log")
     ax_bottom_right.set_xlabel("Burst length [photons]")
     ax_bottom_right.set_ylabel("Burst count")
-    #ax_bottom_right.set_title("Candidate burst length histogram")
-    ax_bottom_right.legend()
+    ax_bottom_right.legend(fontsize=9)
 
-    plt.subplots_adjust(hspace=0.35, wspace=0.3)
-    plt.savefig(save_path, dpi=300)
+    plt.subplots_adjust(
+        left=0.08,
+        right=0.98,
+        top=0.93,
+        bottom=0.09,
+        hspace=0.22,
+        wspace=0.22
+    )
+    plt.savefig(save_path, dpi=300, bbox_inches="tight")
     plt.close()
